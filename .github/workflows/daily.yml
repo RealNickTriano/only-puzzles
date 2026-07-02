@@ -35,7 +35,7 @@ jobs:
           # Without it, the script falls back to GitHub Models (free).
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # PUZZLE_MODEL: claude-sonnet-4-6   # uncomment to pin a specific model
+          PUZZLE_MODEL: claude-fable-5
         run: node scripts/daily.mjs
 
       - name: Commit and push
