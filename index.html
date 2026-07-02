@@ -3,82 +3,126 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OnlyPuzzles — a new machine-made puzzle every morning</title>
+<title>Puzzleworks — a new machine-made puzzle every morning</title>
 <meta name="description" content="A brand-new browser puzzle, invented and coded by an AI, published every day.">
+<meta name="theme-color" content="#1e4438">
 <style>
   :root{
-    --paper:#edf1f4; --paper-line:#dfe6ec;
-    --ink:#1f2c3a; --ink-soft:#5b6b7c;
-    --gold:#c98a12; --card:#fff;
-    --shadow:0 1px 2px rgba(31,44,58,.08), 0 6px 18px rgba(31,44,58,.08);
+    --wall:#1e4438; --wall-deep:#152f26;
+    --paper:#faf7f0; --paper-edge:#e6dfcf;
+    --ink:#22261f; --ink-soft:#71755f;
+    --red:#d8432c;
+    --cream:#ede6d6; --cream-dim:rgba(237,230,214,.62);
+    --easy:#2f7d45; --medium:#b96a00; --hard:#c63524;
+    --easy-wall:#8fd19a; --medium-wall:#f2b04b; --hard-wall:#f2735f;
+    --mono:ui-monospace,"Cascadia Code",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:"Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;
   }
   *{box-sizing:border-box;}
+  html{ background:var(--wall-deep); }
   body{
-    margin:0; color:var(--ink);
-    font-family:"Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;
-    background:
-      linear-gradient(var(--paper-line) 1px, transparent 1px) 0 0/100% 28px,
-      linear-gradient(90deg, var(--paper-line) 1px, transparent 1px) 0 0/28px 100%,
-      var(--paper);
+    margin:0; color:var(--cream); font-family:var(--sans);
+    background:radial-gradient(130% 100% at 50% 0%, var(--wall) 55%, var(--wall-deep) 100%) no-repeat;
     min-height:100vh;
   }
-  .wrap{ max-width:680px; margin:0 auto; padding:40px 20px 60px; }
-  h1{
-    font-family:Georgia,"Times New Roman",serif;
-    font-size:clamp(34px,7vw,52px); letter-spacing:.1em; margin:0; text-align:center;
-  }
-  h1 .num{ color:var(--gold); }
-  .sub{ text-align:center; color:var(--ink-soft); margin:8px 0 40px; font-size:15px; }
+  a:focus-visible, button:focus-visible{ outline:2px solid var(--cream); outline-offset:3px; border-radius:4px; }
+  .page a:focus-visible{ outline-color:var(--red); }
+  .wrap{ max-width:640px; margin:0 auto; padding:44px 20px 60px; }
 
-  .today{
-    background:var(--card); border-radius:18px; box-shadow:var(--shadow);
-    padding:30px 30px 26px; margin-bottom:44px; position:relative; overflow:hidden;
+  h1{
+    font-size:clamp(18px,4vw,22px); font-weight:800; letter-spacing:.34em;
+    text-align:center; margin:0 0 6px; text-indent:.34em; /* offset tracking so it centers true */
   }
-  .today::before{
-    content:""; position:absolute; inset:0 0 auto 0; height:5px; background:var(--gold);
+  .sub{ text-align:center; color:var(--cream-dim); margin:0; font-size:14px; }
+
+  /* ---- today's page: the one piece of paper on the wall ---- */
+  .page{
+    position:relative; max-width:440px; margin:40px auto 60px;
+    background:linear-gradient(180deg,#fffdf8, var(--paper) 45%);
+    color:var(--ink); text-align:center;
+    border-radius:10px; padding:52px 30px 30px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.4),
+      0 10px 25px rgba(0,0,0,.32),
+      0 32px 60px -24px rgba(0,0,0,.5);
   }
-  .kicker{ font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--gold); font-weight:700; margin:0 0 8px;}
-  .today h2{ font-family:Georgia,serif; font-size:clamp(24px,5vw,34px); margin:0 0 6px; letter-spacing:.02em;}
-  .today .tag{ color:var(--ink-soft); margin:0 0 20px; font-size:16px; line-height:1.45;}
-  .meta{ font-size:12px; color:var(--ink-soft); letter-spacing:.06em; }
+  .page::before{ /* the punched holes it hangs from */
+    content:""; position:absolute; top:13px; left:28px; right:28px; height:9px;
+    background:radial-gradient(circle at 9px 4.5px, var(--wall) 3.4px, transparent 3.9px) repeat-x;
+    background-size:19px 9px;
+  }
+  .page-head{
+    display:flex; justify-content:space-between; gap:12px;
+    font-family:var(--mono); font-size:11px; letter-spacing:.2em; color:var(--ink-soft);
+    border-bottom:1px solid var(--paper-edge); padding-bottom:12px;
+  }
+  .page-num{
+    font-size:clamp(96px,28vw,150px); font-weight:900; line-height:1.02;
+    letter-spacing:-.04em; color:var(--red); font-variant-numeric:tabular-nums;
+    margin:4px 0 0;
+  }
+  .page h2{
+    font-size:clamp(24px,6vw,32px); font-weight:800; letter-spacing:.14em;
+    text-transform:uppercase; margin:2px 0 10px;
+  }
+  .page .tag{ color:#5b5f50; margin:0 auto 22px; font-size:15.5px; line-height:1.5; max-width:34ch; }
   .play{
     display:inline-block; font-weight:700; font-size:16px;
-    background:var(--ink); color:#fff; text-decoration:none;
-    padding:13px 30px; border-radius:999px; margin-right:14px;
+    background:var(--ink); color:var(--paper); text-decoration:none;
+    padding:13px 44px; border-radius:999px;
     transition:transform .1s ease, background-color .15s ease;
   }
-  .play:hover{ background:var(--gold); }
+  .play:hover{ background:var(--red); }
   .play:active{ transform:scale(.97); }
+  .page-meta{
+    font-family:var(--mono); font-size:11px; letter-spacing:.06em;
+    color:var(--ink-soft); margin:20px 0 0;
+  }
+  .page-meta strong{ color:var(--ink); }
+  .diff-easy{ color:var(--easy); font-weight:700; }
+  .diff-medium{ color:var(--medium); font-weight:700; }
+  .diff-hard{ color:var(--hard); font-weight:700; }
 
+  @keyframes settle{
+    from{ opacity:0; transform:translateY(-16px) rotate(.5deg); }
+    to{ opacity:1; transform:none; }
+  }
+  .page{ animation:settle .55s cubic-bezier(.2,.8,.3,1) both; }
+  @media (prefers-reduced-motion:reduce){ .page{ animation:none; } }
+
+  /* ---- the ledger of torn-off days ---- */
   h3.archive-h{
-    font-family:Georgia,serif; font-size:15px; letter-spacing:.18em; text-transform:uppercase;
-    color:var(--ink-soft); border-bottom:1.5px solid var(--ink); padding-bottom:8px; margin:0 0 4px;
+    font-family:var(--mono); font-size:12px; font-weight:400; letter-spacing:.24em;
+    text-transform:uppercase; color:var(--cream-dim);
+    border-bottom:1px solid rgba(237,230,214,.25); padding-bottom:10px; margin:0 0 2px;
   }
   .row{
     display:flex; align-items:baseline; gap:16px;
-    padding:16px 4px; border-bottom:1px solid var(--paper-line);
+    padding:15px 6px; border-bottom:1px solid rgba(237,230,214,.14);
     text-decoration:none; color:inherit;
   }
-  .row:hover{ background:rgba(255,255,255,.75); }
-  .row .d{ font-variant-numeric:tabular-nums; font-size:13px; color:var(--ink-soft); min-width:86px; }
-  .row .t{ font-weight:700; font-size:17px; }
-  .row .g{ color:var(--ink-soft); font-size:14px; flex:1; min-width:0;
+  .row:hover{ background:rgba(255,255,255,.05); }
+  .row .d{ font-family:var(--mono); font-size:12px; color:var(--cream-dim); min-width:104px; }
+  .row .t{ font-weight:700; font-size:16px; letter-spacing:.04em; }
+  .row .g{ color:var(--cream-dim); font-size:13.5px; flex:1; min-width:0;
            white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .row .diff{
-    font-size:10px; letter-spacing:.1em; text-transform:uppercase; font-weight:700;
-    padding:3px 9px; border-radius:999px; border:1px solid var(--ink-soft); color:var(--ink-soft);
-  }
-  .row .diff.hard{ border-color:var(--gold); color:var(--gold); }
+  .row .diff{ font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; }
+  .row .diff.easy{ color:var(--easy-wall); }
+  .row .diff.medium{ color:var(--medium-wall); }
+  .row .diff.hard{ color:var(--hard-wall); }
 
-  .state{ text-align:center; color:var(--ink-soft); padding:40px 0; }
-  footer{ text-align:center; color:var(--ink-soft); font-size:13px; margin-top:56px; line-height:1.6;}
-  @media (max-width:520px){ .row .g{ display:none; } }
+  .state{ text-align:center; color:var(--cream-dim); padding:40px 0; }
+  footer{
+    font-family:var(--mono); text-align:center; color:var(--cream-dim);
+    font-size:11.5px; margin-top:60px; line-height:1.8;
+  }
+  @media (max-width:520px){ .row .g{ display:none; } .row .d{ min-width:88px; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>ONLY<span class="num">PUZZLES</span></h1>
-  <p class="sub">A brand-new puzzle, invented and coded by an AI, every morning.</p>
+  <h1>PUZZLEWORKS</h1>
+  <p class="sub">A new puzzle, invented and coded by a machine, every morning.</p>
 
   <div id="today"></div>
 
@@ -95,8 +139,6 @@
 (async () => {
   const todayEl = document.getElementById('today');
   const archEl = document.getElementById('archive');
-  const fmt = d => new Date(d + 'T12:00:00Z')
-    .toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
   let data;
@@ -105,34 +147,45 @@
     if (!res.ok) throw new Error(res.status);
     data = await res.json();
   } catch {
-    archEl.innerHTML = '<p class="state">Couldn\u2019t load the puzzle list. Refresh to try again.</p>';
+    archEl.innerHTML = '<p class="state">Couldn’t load the puzzle list. Refresh to try again.</p>';
     return;
   }
 
   const puzzles = (data.puzzles || []).slice()
     .sort((a, b) => b.date.localeCompare(a.date));
   if (!puzzles.length) {
-    archEl.innerHTML = '<p class="state">No puzzles yet \u2014 the first one arrives tomorrow morning.</p>';
+    archEl.innerHTML = '<p class="state">No puzzles yet — the first one arrives tomorrow morning.</p>';
     return;
   }
 
   const [latest, ...rest] = puzzles;
+  const d = new Date(latest.date + 'T12:00:00Z');
+  const month = d.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' }).toUpperCase();
+  const wday = d.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' }).toUpperCase();
+  const diff = esc(latest.difficulty || 'medium');
   todayEl.innerHTML = `
-    <div class="today">
-      <p class="kicker">Today\u2019s puzzle \u00b7 ${fmt(latest.date)}</p>
+    <article class="page">
+      <div class="page-head">
+        <span>${month} ${d.getUTCFullYear()}</span>
+        <span>${wday}</span>
+      </div>
+      <div class="page-num">${d.getUTCDate()}</div>
       <h2>${esc(latest.title)}</h2>
       <p class="tag">${esc(latest.tagline)}</p>
       <a class="play" href="${esc(latest.file)}">Play</a>
-      <span class="meta">difficulty: ${esc(latest.difficulty || 'medium')}${latest.model ? ' · made by ' + esc(latest.model) : ''}</span>
-    </div>`;
+      <p class="page-meta">difficulty: <span class="diff-${diff}">${diff}</span>${latest.model ? ' &middot; made by <strong>' + esc(latest.model) + '</strong>' : ''}</p>
+    </article>`;
 
+  const fmt = date => new Date(date + 'T12:00:00Z')
+    .toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric', timeZone:'UTC' })
+    .toUpperCase();
   archEl.innerHTML = rest.length
     ? rest.map(p => `
         <a class="row" href="${esc(p.file)}">
           <span class="d">${fmt(p.date)}</span>
           <span class="t">${esc(p.title)}</span>
           <span class="g">${esc(p.tagline)}</span>
-          <span class="diff ${esc(p.difficulty)}">${esc(p.difficulty || 'medium')}</span>
+          <span class="diff ${esc(p.difficulty || 'medium')}">${esc(p.difficulty || 'medium')}</span>
         </a>`).join('')
     : '<p class="state">The archive starts filling up tomorrow.</p>';
 })();

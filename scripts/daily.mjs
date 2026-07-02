@@ -24,7 +24,7 @@ const outFile = `${PUZZLES_DIR}/${today}.html`;
 // ---------- previous puzzles (avoid clones) ----------
 function loadManifest() {
   try { return JSON.parse(readFileSync(MANIFEST, "utf8")); }
-  catch { return { site: "OnlyPuzzles", puzzles: [] }; }
+  catch { return { site: "Puzzleworks", puzzles: [] }; }
 }
 const manifest = loadManifest();
 const previousPuzzles = manifest.puzzles
@@ -37,7 +37,7 @@ const PROMPT = `You are designing today's puzzle for a daily puzzle website (lik
 Design brief:
 - Invent an ORIGINAL browser puzzle: pick the core mechanic and the visual theme yourself.
 - Do NOT clone Wordle, Sudoku, 2048, crosswords, or Minesweeper.
-- Every puzzle previously published on this site is listed below. Your puzzle must be mechanically distinct from ALL of them — not just a re-theme or minor variation. Before writing code, decide on a mechanic that none of these use:
+- Every puzzle previously published on this site is listed below. Your puzzle must be mechanically distinct from ALL of them — not just a re-theme or minor variation — and its visual design should be distinct too. Before writing code, decide on a mechanic that none of these use:
 ${previousPuzzles}
 - Low skill floor, high skill ceiling: the core rule must fit in one or two sentences, but a perfect/optimal solve should be genuinely hard.
 - CRITICAL — guaranteed solvability: generate the puzzle by first constructing a valid SOLUTION with code, then deriving the visible puzzle from it (never generate a random board and hope it's solvable).
@@ -51,9 +51,14 @@ Hard technical requirements:
 - No console errors. No infinite loops. Keep total file under 40KB.
 - Accessible basics: buttons are real <button> elements, visible keyboard focus, prefers-reduced-motion respected.
 - Near the top of the file include exactly one metadata comment on its own line:
-  <!-- PUZZLE-META {"title":"NAME","tagline":"one sentence hook","difficulty":"easy|medium|hard","summary":"2-3 sentences describing the core mechanic and goal, written so a future designer can tell at a glance whether a new idea would be a clone of this one"} -->
+  <!-- PUZZLE-META {"title":"NAME","tagline":"one sentence hook","difficulty":"easy|medium|hard","summary":"2-3 sentences describing the core mechanic and goal, plus a short note on the visual style, written so a future designer can tell at a glance whether a new idea would be a clone of this one"} -->
 
-Quality bar: clean modern aesthetic, a distinctive palette (not default grays), satisfying micro-feedback on moves. Playtest mentally: walk through a full solve step by step before writing the final code, and make the win condition actually reachable.`;
+Visual identity — every puzzle gets its OWN design:
+- Design this puzzle's look from scratch to fit ITS theme: choose your own palette, typography, background, and motion language. Commit to a strong art direction rather than a generic "clean app" look.
+- Do NOT reuse the site's home-page aesthetic (deep pine-green wall, white tear-off calendar page, big red date numerals, monospaced metadata) — the puzzle should feel like its own little world, not a page of the home site.
+- Avoid converging on the same look day after day: no default grays, and don't fall back on the overused purple-gradient-on-dark-card style.
+
+Quality bar: satisfying micro-feedback on moves, and a cohesive look where every element (buttons, modal, win screen) belongs to the same art direction. Playtest mentally: walk through a full solve step by step before writing the final code, and make the win condition actually reachable.`;
 
 // ---------- LLM providers ----------
 async function callAnthropic(prompt) {

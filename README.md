@@ -1,4 +1,4 @@
-# OnlyPuzzles
+# Puzzleworks
 
 A puzzle website where **every day, a brand-new browser puzzle is invented, coded, validated, and published entirely by an LLM** — with $0/month hosting.
 
