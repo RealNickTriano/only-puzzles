@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write   # to commit the new puzzle
   models: read      # for the free GitHub Models fallback
+  pages: write
 
 concurrency:
   group: daily-puzzle
