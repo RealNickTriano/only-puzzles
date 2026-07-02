@@ -123,7 +123,7 @@
       <h2>${esc(latest.title)}</h2>
       <p class="tag">${esc(latest.tagline)}</p>
       <a class="play" href="${esc(latest.file)}">Play</a>
-      <span class="meta">difficulty: ${esc(latest.difficulty || 'medium')}</span>
+      <span class="meta">difficulty: ${esc(latest.difficulty || 'medium')}${latest.model ? ' · made by ' + esc(latest.model) : ''}</span>
     </div>`;
 
   archEl.innerHTML = rest.length
