@@ -6,9 +6,9 @@
  *   - If ANTHROPIC_API_KEY is set  -> Claude API (best quality, ~pennies/day)
  *   - Else if GITHUB_TOKEN is set  -> GitHub Models (free tier)
  *
- * Exits non-zero only on unexpected errors. If every generation attempt fails
- * validation, it exits 0 WITHOUT writing anything, so yesterday's puzzle
- * simply remains the newest one and the site never shows a broken page.
+ * If every generation attempt fails validation, it exits 1 WITHOUT writing
+ * anything, so the workflow run fails visibly while yesterday's puzzle simply
+ * remains the newest one and the site never shows a broken page.
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
@@ -73,12 +73,28 @@ async function callAnthropic(prompt) {
     body: JSON.stringify({
       model,
       max_tokens: 32000,
+      stream: true, // non-streaming waits on the full generation, which blows past undici's 5-min headers timeout
       messages: [{ role: "user", content: prompt }],
     }),
   });
   if (!res.ok) throw new Error(`Anthropic API ${res.status}: ${await res.text()}`);
-  const data = await res.json();
-  return { text: data.content.map(b => b.text || "").join(""), model };
+  let text = "";
+  let buffer = "";
+  const decoder = new TextDecoder();
+  for await (const chunk of res.body) {
+    buffer += decoder.decode(chunk, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith("data:")) continue;
+      const event = JSON.parse(line.slice(5).trim());
+      if (event.type === "content_block_delta" && event.delta?.type === "text_delta")
+        text += event.delta.text;
+      if (event.type === "error")
+        throw new Error(`Anthropic stream error: ${JSON.stringify(event.error)}`);
+    }
+  }
+  return { text, model };
 }
 
 async function callGitHubModels(prompt) {
@@ -194,10 +210,11 @@ for (let attempt = 1; attempt <= MAX_ATTEMPTS && !published; attempt++) {
     console.log(`✔ Published "${meta.title}" -> ${outFile}`);
     published = true;
   } catch (e) {
-    console.log("Attempt error:", e.message);
+    console.log("Attempt error:", e.cause ? `${e.message} (cause: ${e.cause.message || e.cause})` : e.message);
   }
 }
 
 if (!published) {
-  console.log("\nAll attempts failed validation. Publishing nothing; yesterday's puzzle stays on top.");
+  console.error("\nAll attempts failed validation. Publishing nothing; yesterday's puzzle stays on top.");
+  process.exit(1);
 }
