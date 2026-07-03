@@ -2,6 +2,15 @@
   "site": "Puzzleworks",
   "puzzles": [
     {
+      "date": "2026-07-03",
+      "file": "puzzles/2026-07-03.html",
+      "title": "Twin Lanterns",
+      "tagline": "Two lanterns, one wind — steer both home in the same breath.",
+      "difficulty": "medium",
+      "summary": "Every swipe or arrow key moves TWO lanterns simultaneously in the same direction across a 7x7 night garden; rocks and the garden edge stop each lantern individually, which is the only way to break their lockstep. Win by resting both lanterns on their matching pedestals at the same moment, ideally in the BFS-computed par number of moves. Visuals: an indigo lantern-festival night with glowing amber and jade paper lanterns, a twinkling starfield, and warm serif festival typography.",
+      "model": "claude-fable-5"
+    },
+    {
       "date": "2026-07-02",
       "file": "puzzles/2026-07-02.html",
       "title": "DELTA",

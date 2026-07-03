@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- PUZZLE-META {"title":"Twin Lanterns","tagline":"Two lanterns, one wind — steer both home in the same breath.","difficulty":"medium","summary":"Every swipe or arrow key moves TWO lanterns simultaneously in the same direction across a 7x7 night garden; rocks and the garden edge stop each lantern individually, which is the only way to break their lockstep. Win by resting both lanterns on their matching pedestals at the same moment, ideally in the BFS-computed par number of moves. Visuals: an indigo lantern-festival night with glowing amber and jade paper lanterns, a twinkling starfield, and warm serif festival typography."} -->
+<title>Twin Lanterns</title>
+<style>
+:root{--amber:#ffb85e;--jade:#5fe3b0;--cream:#ffe9c9;--ink:#0d0d24;--card:#1d1235;}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  overflow:hidden;user-select:none;-webkit-user-select:none;
+  background:linear-gradient(180deg,#0d0d28 0%,#1c1038 55%,#301240 100%);
+  color:var(--cream);font-family:Georgia,'Times New Roman',serif;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  min-height:100dvh;position:relative;
+}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;
+ background:
+  radial-gradient(220px 220px at 86% 6%,rgba(255,220,160,.14),transparent 70%),
+  radial-gradient(2px 2px at 8% 14%,rgba(255,255,255,.8),transparent),
+  radial-gradient(1.5px 1.5px at 22% 28%,rgba(255,255,255,.6),transparent),
+  radial-gradient(2px 2px at 37% 9%,rgba(255,255,255,.7),transparent),
+  radial-gradient(1.5px 1.5px at 55% 20%,rgba(255,255,255,.55),transparent),
+  radial-gradient(2px 2px at 68% 6%,rgba(255,255,255,.75),transparent),
+  radial-gradient(1.5px 1.5px at 79% 24%,rgba(255,255,255,.5),transparent),
+  radial-gradient(2px 2px at 93% 32%,rgba(255,255,255,.65),transparent),
+  radial-gradient(1.5px 1.5px at 14% 46%,rgba(255,255,255,.4),transparent),
+  radial-gradient(1.5px 1.5px at 90% 58%,rgba(255,255,255,.4),transparent),
+  radial-gradient(2px 2px at 5% 72%,rgba(255,255,255,.45),transparent),
+  radial-gradient(1.5px 1.5px at 48% 40%,rgba(255,255,255,.35),transparent);
+ animation:twinkle 5s ease-in-out infinite alternate;}
+@keyframes twinkle{from{opacity:.65}to{opacity:1}}
+header{text-align:center;padding:10px 12px 2px;z-index:1}
+h1{font-size:clamp(26px,7vw,38px);letter-spacing:.14em;font-weight:normal;
+   color:var(--cream);text-shadow:0 0 22px rgba(255,184,94,.45)}
+h1 .a{color:var(--amber)}h1 .j{color:var(--jade)}
+.tag{font-style:italic;font-size:clamp(12px,3.4vw,15px);color:#d9c3a8;margin-top:2px}
+.stats{font-size:14px;letter-spacing:.06em;color:#cbb494;margin:6px 0 8px;z-index:1}
+.stats b{color:var(--cream);font-weight:normal}
+#board{position:relative;width:min(92vw,420px,52dvh);aspect-ratio:1;z-index:1;
+ border:2px solid rgba(255,184,94,.4);border-radius:14px;overflow:hidden;
+ background:#151033;box-shadow:0 0 34px rgba(255,170,90,.14),inset 0 0 30px rgba(0,0,0,.5);
+ touch-action:none;}
+#cells{position:absolute;inset:0;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(7,1fr)}
+.cell{position:relative}
+.cell::after{content:"";position:absolute;inset:2px;border-radius:6px;background:rgba(255,233,201,.045)}
+.cell.alt::after{background:rgba(255,233,201,.075)}
+.cell.wall::after{inset:3px;border-radius:32%;
+ background:radial-gradient(circle at 34% 28%,#3a3a63,#15152f 72%);
+ box-shadow:inset 0 -3px 6px rgba(0,0,0,.6),0 0 6px rgba(0,0,0,.5)}
+.ped,.lan{position:absolute;top:0;left:0;width:calc(100%/7);height:calc(100%/7)}
+.ped::after{content:"";position:absolute;inset:15%;border:2px dashed currentColor;border-radius:50%;opacity:.55}
+.ped.lit::after{border-style:solid;opacity:1;box-shadow:0 0 16px currentColor,inset 0 0 10px currentColor}
+#pedA{color:var(--amber)}#pedB{color:var(--jade)}
+.lan{transition:transform .18s ease;z-index:2;pointer-events:none}
+.core{position:absolute;inset:13%;border-radius:46%}
+#lanA .core{background:radial-gradient(circle at 36% 30%,#ffe6b0,var(--amber) 55%,#c9701e);
+ box-shadow:0 0 18px 5px rgba(255,184,94,.55)}
+#lanB .core{background:radial-gradient(circle at 36% 30%,#d7ffee,var(--jade) 55%,#1e8f68);
+ box-shadow:0 0 18px 5px rgba(95,227,176,.5)}
+.core::after{content:"";position:absolute;inset:0;border-radius:inherit;
+ background:repeating-linear-gradient(90deg,transparent 0 5px,rgba(0,0,0,.1) 5px 7px)}
+.core.bump{animation:bump .22s ease}
+@keyframes bump{0%,100%{transform:translate(0,0)}40%{transform:translate(var(--bx,0),var(--by,0))}}
+.dpad{display:flex;gap:10px;margin:12px 0 6px;z-index:1}
+.dbtn{width:58px;height:46px;font-size:20px;border-radius:12px;cursor:pointer;
+ background:rgba(255,233,201,.08);border:1px solid rgba(255,233,201,.35);color:var(--cream);
+ touch-action:manipulation}
+.dbtn:active{background:rgba(255,184,94,.25)}
+.tools{display:flex;gap:10px;margin-bottom:10px;z-index:1}
+.btn{font-family:inherit;font-size:14px;padding:7px 14px;border-radius:999px;cursor:pointer;
+ background:rgba(255,233,201,.08);border:1px solid rgba(255,233,201,.35);color:var(--cream);
+ letter-spacing:.04em;touch-action:manipulation}
+.btn:hover{background:rgba(255,184,94,.18)}
+button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.overlay{position:fixed;inset:0;background:rgba(6,6,22,.75);display:none;
+ align-items:center;justify-content:center;z-index:10;padding:16px}
+.overlay.show{display:flex}
+.card{background:var(--card);border:1px solid rgba(255,184,94,.4);border-radius:16px;
+ max-width:360px;width:100%;padding:20px 20px 16px;text-align:center;
+ box-shadow:0 0 40px rgba(255,170,90,.2)}
+.card h2{font-weight:normal;letter-spacing:.1em;margin-bottom:10px;color:var(--amber)}
+.card p{font-size:14px;line-height:1.5;color:#e6d3b6;margin-bottom:10px;text-align:left}
+.card p.c{text-align:center}
+.dotA,.dotB{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:-1px}
+.dotA{background:var(--amber);box-shadow:0 0 6px var(--amber)}
+.dotB{background:var(--jade);box-shadow:0 0 6px var(--jade)}
+.big{font-size:40px;margin:4px 0 8px}
+.rowbtns{display:flex;gap:10px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>TWIN <span class="a">LAN</span><span class="j">TERNS</span></h1>
+  <p class="tag">Two lanterns, one wind — guide both home at once.</p>
+</header>
+<div class="stats">Moves <b id="mv">0</b> &nbsp;·&nbsp; Par <b id="parEl">–</b> &nbsp;·&nbsp; Best <b id="bestEl">—</b></div>
+<div id="board" aria-label="Puzzle board. Use arrow keys to move both lanterns.">
+  <div id="cells"></div>
+  <div class="ped" id="pedA"></div>
+  <div class="ped" id="pedB"></div>
+  <div class="lan" id="lanA"><div class="core"></div></div>
+  <div class="lan" id="lanB"><div class="core"></div></div>
+</div>
+<div class="dpad">
+  <button class="dbtn" data-d="2" aria-label="Move left">◀</button>
+  <button class="dbtn" data-d="0" aria-label="Move up">▲</button>
+  <button class="dbtn" data-d="1" aria-label="Move down">▼</button>
+  <button class="dbtn" data-d="3" aria-label="Move right">▶</button>
+</div>
+<div class="tools">
+  <button class="btn" id="howBtn">How to play</button>
+  <button class="btn" id="undoBtn">Undo</button>
+  <button class="btn" id="resetBtn">Reset</button>
+</div>
+
+<div class="overlay" id="howOv" role="dialog" aria-modal="true" aria-labelledby="howT">
+  <div class="card">
+    <h2 id="howT">HOW TO PLAY</h2>
+    <p>🏮 Every swipe, arrow key, or button press moves <b>both</b> lanterns one step in the same direction — they ride the same gust of wind.</p>
+    <p>🪨 Rocks and the garden edge stop a lantern while the other keeps drifting. That is your only way to split them apart. (Lanterns are spirits — they may pass through each other.)</p>
+    <p>✨ Rest the <span class="dotA"></span> amber lantern on the amber ring and the <span class="dotB"></span> jade lantern on the jade ring <b>at the same time</b>. Match par for a perfect night.</p>
+    <div class="rowbtns"><button class="btn" id="howClose">Begin</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="winOv" role="dialog" aria-modal="true" aria-labelledby="winT">
+  <div class="card">
+    <div class="big">🏮✨🏮</div>
+    <h2 id="winT">BOTH LANTERNS LIT</h2>
+    <p class="c" id="winMsg"></p>
+    <div class="rowbtns">
+      <button class="btn" id="shareBtn">Share result</button>
+      <button class="btn" id="winClose">Admire the garden</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+var N=7,SZ=49,DIRS=[[0,-1],[0,1],[-1,0],[1,0]];
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};}
+var now=new Date(),Y=now.getFullYear(),Mo=now.getMonth(),Da=now.getDate();
+var seed=Y*10000+(Mo+1)*100+Da;
+var NO=Math.max(1,Math.round((new Date(Y,Mo,Da)-new Date(2025,0,1))/864e5)+1);
+
+function makeStepT(wall){
+  return [0,1,2,3].map(function(d){
+    var t=new Int16Array(SZ);
+    for(var c=0;c<SZ;c++){
+      if(wall[c]){t[c]=c;continue;}
+      var x=c%N,y=(c/N)|0,nx=x+DIRS[d][0],ny=y+DIRS[d][1];
+      t[c]=(nx>=0&&nx<N&&ny>=0&&ny<N&&!wall[ny*N+nx])?ny*N+nx:c;
+    }
+    return t;
+  });
+}
+function genPuzzle(sd){
+  var rng=mulberry32(sd),fallback=null,att,i,d;
+  for(att=0;att<250;att++){
+    var wall=new Array(SZ),placed=0,guard=0;
+    for(i=0;i<SZ;i++)wall[i]=false;
+    var wc=13+((rng()*5)|0);
+    while(placed<wc&&guard<600){guard++;var w=(rng()*SZ)|0;if(!wall[w]){wall[w]=true;placed++;}}
+    var open=[];for(i=0;i<SZ;i++)if(!wall[i])open.push(i);
+    if(open.length<24)continue;
+    var seen=new Uint8Array(SZ),st=[open[0]],cnt=1;seen[open[0]]=1;
+    while(st.length){
+      var c=st.pop(),x=c%N,y=(c/N)|0;
+      for(d=0;d<4;d++){var nx=x+DIRS[d][0],ny=y+DIRS[d][1];
+        if(nx<0||nx>=N||ny<0||ny>=N)continue;
+        var j=ny*N+nx;if(!wall[j]&&!seen[j]){seen[j]=1;cnt++;st.push(j);}}
+    }
+    if(cnt!==open.length)continue;
+    var stepT=makeStepT(wall);
+    var gA=open[(rng()*open.length)|0],gB=gA,gg=0;
+    while(gB===gA&&gg<60){gB=open[(rng()*open.length)|0];gg++;}
+    if(gB===gA)continue;
+    var S=SZ*SZ,dist=new Int16Array(S);dist.fill(-1);
+    var rev=new Array(S),ai,bi;
+    for(ai=0;ai<open.length;ai++)for(bi=0;bi<open.length;bi++){
+      var a=open[ai],b=open[bi],s=a*SZ+b;
+      for(d=0;d<4;d++){var t=stepT[d][a]*SZ+stepT[d][b];
+        if(t!==s){if(!rev[t])rev[t]=[];rev[t].push(s);}}
+    }
+    var goal=gA*SZ+gB,q=[goal],qi=0;dist[goal]=0;
+    while(qi<q.length){var cur=q[qi++],pre=rev[cur];
+      if(pre)for(i=0;i<pre.length;i++){var p=pre[i];if(dist[p]<0){dist[p]=dist[cur]+1;q.push(p);}}}
+    var maxd=0;
+    for(ai=0;ai<open.length;ai++)for(bi=0;bi<open.length;bi++){
+      var a2=open[ai],b2=open[bi];
+      if(a2===b2||a2===gA||b2===gB)continue;
+      var dd=dist[a2*SZ+b2];if(dd>maxd)maxd=dd;
+    }
+    if(maxd<4)continue;
+    var target=Math.min(maxd,18),cands=[];
+    for(ai=0;ai<open.length;ai++)for(bi=0;bi<open.length;bi++){
+      var a3=open[ai],b3=open[bi];
+      if(a3===b3||a3===gA||b3===gB)continue;
+      if(dist[a3*SZ+b3]===target)cands.push([a3,b3]);
+    }
+    if(!cands.length)continue;
+    var pick=cands[(rng()*cands.length)|0];
+    var puz={wall:wall,gA:gA,gB:gB,sa:pick[0],sb:pick[1],par:target,stepT:stepT};
+    if(target>=9)return puz;
+    if(!fallback||target>fallback.par)fallback=puz;
+  }
+  if(fallback)return fallback;
+  var w0=new Array(SZ);for(i=0;i<SZ;i++)w0[i]=false;
+  return {wall:w0,gA:0,gB:6,sa:42,sb:48,par:6,stepT:makeStepT(w0)};
+}
+var P=genPuzzle(seed);
+
+var $=function(id){return document.getElementById(id);};
+var boardEl=$('board'),cellsEl=$('cells'),lanA=$('lanA'),lanB=$('lanB'),
+    pedA=$('pedA'),pedB=$('pedB'),mvEl=$('mv'),parEl=$('parEl'),bestEl=$('bestEl');
+var BESTKEY='tl-best-'+NO;
+
+for(var i=0;i<SZ;i++){
+  var cell=document.createElement('div');
+  cell.className='cell'+(P.wall[i]?' wall':(((i%N)+((i/N)|0))%2?' alt':''));
+  cellsEl.appendChild(cell);
+}
+function place(el,c){var x=c%N,y=(c/N)|0;el.style.transform='translate('+(x*100)+'%,'+(y*100)+'%)';}
+place(pedA,P.gA);place(pedB,P.gB);
+parEl.textContent=P.par;
+
+var a=P.sa,b=P.sb,hist=[[a,b]],trail=[],won=false;
+
+function loadBest(){var v=null;try{v=localStorage.getItem(BESTKEY);}catch(e){}
+  bestEl.textContent=v?v:'—';return v?parseInt(v,10):null;}
+loadBest();
+
+[lanA,lanB].forEach(function(l){
+  var core=l.firstElementChild;
+  core.addEventListener('animationend',function(){core.classList.remove('bump');});
+});
+function bump(l,d){
+  var core=l.firstElementChild;
+  core.style.setProperty('--bx',(DIRS[d][0]*18)+'%');
+  core.style.setProperty('--by',(DIRS[d][1]*18)+'%');
+  core.classList.remove('bump');void core.offsetWidth;core.classList.add('bump');
+}
+function update(){
+  place(lanA,a);place(lanB,b);
+  mvEl.textContent=hist.length-1;
+  pedA.classList.toggle('lit',a===P.gA);
+  pedB.classList.toggle('lit',b===P.gB);
+}
+function anyOverlay(){return $('howOv').classList.contains('show')||$('winOv').classList.contains('show');}
+
+function move(d){
+  if(won||anyOverlay())return;
+  var na=P.stepT[d][a],nb=P.stepT[d][b];
+  if(na===a&&nb===b){bump(lanA,d);bump(lanB,d);return;}
+  if(na===a)bump(lanA,d);
+  if(nb===b)bump(lanB,d);
+  a=na;b=nb;hist.push([a,b]);trail.push(d);
+  update();
+  if(a===P.gA&&b===P.gB){won=true;setTimeout(win,260);}
+}
+function undo(){
+  if(won||anyOverlay())return;
+  if(hist.length>1){hist.pop();trail.pop();var s=hist[hist.length-1];a=s[0];b=s[1];update();}
+}
+function reset(){
+  a=P.sa;b=P.sb;hist=[[a,b]];trail=[];won=false;
+  $('winOv').classList.remove('show');update();
+}
+function win(){
+  var m=hist.length-1,prev=loadBest();
+  if(prev===null||m<prev){try{localStorage.setItem(BESTKEY,String(m));}catch(e){}}
+  loadBest();
+  var msg='Puzzle #'+NO+' — solved in <b>'+m+'</b> moves (par '+P.par+').';
+  if(m===P.par)msg+='<br>⭐ A perfect night!';
+  else if(m<=P.par+2)msg+='<br>So close to perfect…';
+  $('winMsg').innerHTML=msg;
+  $('winOv').classList.add('show');
+  $('shareBtn').textContent='Share result';
+  $('shareBtn').focus();
+}
+function shareText(){
+  var m=hist.length-1;
+  var t='🏮 Twin Lanterns #'+NO+'\nLit both in '+m+' moves (par '+P.par+')'+(m===P.par?' ⭐':'');
+  if(trail.length<=28){
+    var arr='⬆️⬇️⬅️➡️';
+    t+='\n'+trail.map(function(d){return arr.substr(d*3,3);}).join('');
+  }
+  return t;
+}
+$('shareBtn').addEventListener('click',function(){
+  var t=shareText(),btn=$('shareBtn');
+  function ok(){btn.textContent='Copied!';}
+  function fail(){
+    try{
+      var ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';
+      document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);ok();
+    }catch(e){btn.textContent='Copy failed';}
+  }
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(ok,fail);}
+  else fail();
+});
+$('winClose').addEventListener('click',function(){$('winOv').classList.remove('show');});
+$('undoBtn').addEventListener('click',undo);
+$('resetBtn').addEventListener('click',reset);
+$('howBtn').addEventListener('click',function(){$('howOv').classList.add('show');$('howClose').focus();});
+$('howClose').addEventListener('click',function(){
+  $('howOv').classList.remove('show');
+  try{localStorage.setItem('tl-howto','1');}catch(e){}
+});
+document.querySelectorAll('.dbtn').forEach(function(btn){
+  btn.addEventListener('click',function(){move(parseInt(btn.getAttribute('data-d'),10));});
+});
+window.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){$('howOv').classList.remove('show');$('winOv').classList.remove('show');return;}
+  var map={ArrowUp:0,ArrowDown:1,ArrowLeft:2,ArrowRight:3,w:0,s:1,a:2,d:3,W:0,S:1,A:2,D:3};
+  if(map[e.key]!==undefined){e.preventDefault();move(map[e.key]);}
+  else if(e.key==='u'||e.key==='U')undo();
+});
+var px=null,py=null,pid=null;
+boardEl.addEventListener('pointerdown',function(e){pid=e.pointerId;px=e.clientX;py=e.clientY;});
+boardEl.addEventListener('pointerup',function(e){
+  if(px===null||e.pointerId!==pid)return;
+  var dx=e.clientX-px,dy=e.clientY-py;px=null;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<22)return;
+  move(Math.abs(dx)>Math.abs(dy)?(dx>0?3:2):(dy>0?1:0));
+});
+boardEl.addEventListener('pointercancel',function(){px=null;});
+
+var seenHow=false;
+try{seenHow=!!localStorage.getItem('tl-howto');}catch(e){}
+if(!seenHow)$('howOv').classList.add('show');
+update();
+})();
+</script>
+</body>
+</html>
