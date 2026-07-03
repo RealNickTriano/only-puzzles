@@ -13,7 +13,8 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = 3;      // fresh generations (new conversation each time)
+const MAX_FIX_ROUNDS = 2;    // repair rounds within one attempt before starting fresh
 const PUZZLES_DIR = "puzzles";
 const MANIFEST = "manifest.json";
 
@@ -61,7 +62,7 @@ Visual identity — every puzzle gets its OWN design:
 Quality bar: satisfying micro-feedback on moves, and a cohesive look where every element (buttons, modal, win screen) belongs to the same art direction. Playtest mentally: walk through a full solve step by step before writing the final code, and make the win condition actually reachable.`;
 
 // ---------- LLM providers ----------
-async function callAnthropic(prompt) {
+async function callAnthropic(messages) {
   const model = process.env.PUZZLE_MODEL || "claude-sonnet-4-6";
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -74,7 +75,7 @@ async function callAnthropic(prompt) {
       model,
       max_tokens: 32000,
       stream: true, // non-streaming waits on the full generation, which blows past undici's 5-min headers timeout
-      messages: [{ role: "user", content: prompt }],
+      messages,
     }),
   });
   if (!res.ok) throw new Error(`Anthropic API ${res.status}: ${await res.text()}`);
@@ -97,7 +98,7 @@ async function callAnthropic(prompt) {
   return { text, model };
 }
 
-async function callGitHubModels(prompt) {
+async function callGitHubModels(messages) {
   const model = process.env.PUZZLE_MODEL || "openai/gpt-4o";
   const res = await fetch("https://models.github.ai/inference/chat/completions", {
     method: "POST",
@@ -108,7 +109,7 @@ async function callGitHubModels(prompt) {
     body: JSON.stringify({
       model,
       max_tokens: 8000,
-      messages: [{ role: "user", content: prompt }],
+      messages,
     }),
   });
   if (!res.ok) throw new Error(`GitHub Models ${res.status}: ${await res.text()}`);
@@ -116,9 +117,9 @@ async function callGitHubModels(prompt) {
   return { text: data.choices[0].message.content, model };
 }
 
-async function generate(prompt) {
-  if (process.env.ANTHROPIC_API_KEY) return callAnthropic(prompt);
-  if (process.env.GITHUB_TOKEN) return callGitHubModels(prompt);
+async function generate(messages) {
+  if (process.env.ANTHROPIC_API_KEY) return callAnthropic(messages);
+  if (process.env.GITHUB_TOKEN) return callGitHubModels(messages);
   throw new Error("No credentials: set ANTHROPIC_API_KEY or run inside GitHub Actions.");
 }
 
@@ -184,31 +185,56 @@ if (existsSync(outFile)) {
 }
 mkdirSync(PUZZLES_DIR, { recursive: true });
 
+async function validate(html) {
+  const { errors, meta } = staticChecks(html);
+  if (errors.length) return { problems: errors.map(e => `static check: ${e}`), meta };
+  return { problems: await browserCheck(html), meta };
+}
+
+function fixRequest(problems) {
+  return `The puzzle you produced failed automated validation with these problems:
+${problems.map(p => `- ${p}`).join("\n")}
+
+Fix these specific problems while keeping the puzzle's mechanic and design intact. Reply with the COMPLETE corrected HTML file and NOTHING else — no markdown fences, no commentary, no diff. The file must satisfy every requirement from the original brief.`;
+}
+
 let published = false;
 for (let attempt = 1; attempt <= MAX_ATTEMPTS && !published; attempt++) {
   console.log(`\n=== Attempt ${attempt}/${MAX_ATTEMPTS} ===`);
+  const messages = [{ role: "user", content: PROMPT }];
   try {
-    const { text, model } = await generate(PROMPT);
-    const html = extractHtml(text);
-    const { errors, meta } = staticChecks(html);
-    if (errors.length) { console.log("Static checks failed:", errors); continue; }
+    for (let round = 0; round <= MAX_FIX_ROUNDS; round++) {
+      const { text, model } = await generate(messages);
+      const html = extractHtml(text);
+      const { problems, meta } = await validate(html);
 
-    const problems = await browserCheck(html);
-    if (problems.length) { console.log("Browser checks failed:", problems); continue; }
+      if (problems.length === 0) {
+        writeFileSync(outFile, html);
+        manifest.puzzles.unshift({
+          date: today,
+          file: outFile,
+          title: meta.title,
+          tagline: meta.tagline || "",
+          difficulty: meta.difficulty || "medium",
+          summary: meta.summary,
+          model,
+        });
+        writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + "\n");
+        console.log(`✔ Published "${meta.title}" -> ${outFile}`);
+        published = true;
+        break;
+      }
 
-    writeFileSync(outFile, html);
-    manifest.puzzles.unshift({
-      date: today,
-      file: outFile,
-      title: meta.title,
-      tagline: meta.tagline || "",
-      difficulty: meta.difficulty || "medium",
-      summary: meta.summary,
-      model,
-    });
-    writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + "\n");
-    console.log(`✔ Published "${meta.title}" -> ${outFile}`);
-    published = true;
+      if (round < MAX_FIX_ROUNDS) {
+        console.log(`Validation failed (fix round ${round + 1}/${MAX_FIX_ROUNDS}):`, problems);
+        messages.push(
+          { role: "assistant", content: text },
+          { role: "user", content: fixRequest(problems) },
+        );
+      } else {
+        console.log("Validation failed, out of fix rounds — regenerating from scratch:", problems);
+      }
+    }
   } catch (e) {
     console.log("Attempt error:", e.cause ? `${e.message} (cause: ${e.cause.message || e.cause})` : e.message);
   }
