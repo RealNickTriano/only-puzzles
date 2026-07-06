@@ -2,6 +2,15 @@
   "site": "Puzzleworks",
   "puzzles": [
     {
+      "date": "2026-07-06",
+      "file": "puzzles/2026-07-06.html",
+      "title": "Astrolabe",
+      "tagline": "Turn three brass rings until every spoke of the heavens sums to twenty.",
+      "difficulty": "hard",
+      "summary": "A circular alignment puzzle: an eight-spoked astrolabe has a fixed engraved stone rim and three rotatable brass number rings; the player rotates the rings (drag or step buttons) so that all eight radial spokes of four numbers simultaneously sum to the target 20, ideally in the par number of 45-degree turns. Any concentric-ring rotation / radial-sum or radial-matching alignment mechanic would be a clone of this. Visual style: a midnight observatory — deep star-flecked navy sky, glowing brass and gold rings, parchment serif numerals.",
+      "model": "claude-fable-5"
+    },
+    {
       "date": "2026-07-05",
       "file": "puzzles/2026-07-05.html",
       "title": "Glasswright",
