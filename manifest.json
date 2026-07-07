@@ -2,6 +2,15 @@
   "site": "Puzzleworks",
   "puzzles": [
     {
+      "date": "2026-07-07",
+      "file": "puzzles/2026-07-07.html",
+      "title": "Equipoise",
+      "tagline": "Hang all nine weights so every rod of the mobile swings level.",
+      "difficulty": "hard",
+      "summary": "Players drag nine numbered weights onto nine hooks of a hanging Calder-style mobile; each rod must balance its torques (weight x printed hook distance, with sub-rods counting as the total load below them), and rods tilt live toward the heavier side. Win by making all five rods level at once. Visual style is a bright modernist gallery: cream paper background, charcoal rods and strings, primary-coloured numbered discs. Any torque-balancing, mobile-hanging or weight-placement-on-a-lever mechanic would be a clone of this.",
+      "model": "claude-fable-5"
+    },
+    {
       "date": "2026-07-06",
       "file": "puzzles/2026-07-06.html",
       "title": "Astrolabe",

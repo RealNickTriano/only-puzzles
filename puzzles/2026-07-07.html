@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- PUZZLE-META {"title":"Equipoise","tagline":"Hang all nine weights so every rod of the mobile swings level.","difficulty":"hard","summary":"Players drag nine numbered weights onto nine hooks of a hanging Calder-style mobile; each rod must balance its torques (weight x printed hook distance, with sub-rods counting as the total load below them), and rods tilt live toward the heavier side. Win by making all five rods level at once. Visual style is a bright modernist gallery: cream paper background, charcoal rods and strings, primary-coloured numbered discs. Any torque-balancing, mobile-hanging or weight-placement-on-a-lever mechanic would be a clone of this."} -->
+<!-- SOLUTION (unique): hook k(A,-1)=5 ; e(B,-3)=8 f(B,+4)=9 ; a(D,-1)=4 b(D,+2)=2 ; g(C,-2)=7 h(C,+3)=6 ; c(E,-3)=1 d(E,+1)=3.
+     Checks: D: 1*4=2*2. E: 3*1=1*3. B: 2*(4+2)+3*8=36=4*9. C: 2*7+1*(1+3)=18=3*6. A: 2*(6+8+9)+1*5=51=3*(7+4+6).
+     Uniqueness: A forces k=5 (90-k=5*Sc), then C forces E=(1,3),g=7,h=6 (34-We=5h), then B forces D=(4,2),e=8,f=9. -->
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Equipoise</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;height:100dvh;display:flex;flex-direction:column;overflow:hidden;
+ background:#efe5cc;background:radial-gradient(circle at 50% 18%,#faf4e3,#efe5cc 75%);
+ color:#26251f;font-family:'Avenir Next','Futura','Trebuchet MS','Segoe UI',system-ui,sans-serif;
+ -webkit-user-select:none;user-select:none}
+header{text-align:center;padding:10px 8px 0}
+.dots span{display:inline-block;width:9px;height:9px;border-radius:50%;margin:0 4px}
+h1{margin:2px 0 0;font-size:clamp(20px,5.5vw,30px);letter-spacing:.32em;font-weight:800}
+.tag{margin:3px 0 0;font-size:12.5px;color:#77704f;font-style:italic}
+#stage{flex:1;min-height:0;display:flex;justify-content:center;padding:4px 6px}
+#frame{height:100%;max-width:min(94vw,500px);aspect-ratio:420/470;margin:auto}
+svg{width:100%;height:100%;display:block;touch-action:none}
+#bar{display:flex;align-items:center;justify-content:center;gap:10px;padding:6px 8px 12px;flex-wrap:wrap}
+#status{font-size:12.5px;color:#5d5640;text-align:center;font-variant-numeric:tabular-nums}
+.btn{background:#26251f;color:#f6efdb;border:2px solid #26251f;border-radius:999px;
+ padding:7px 15px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:.04em}
+.btn.ghost{background:transparent;color:#26251f}
+.btn:hover{transform:translateY(-1px)}
+.btn:focus-visible{outline:3px solid #e5383b;outline-offset:2px}
+.ovl{position:fixed;inset:0;background:rgba(38,37,31,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9}
+.ovl[hidden]{display:none}
+.card{background:#faf4e1;border:3px solid #26251f;border-radius:16px;box-shadow:10px 10px 0 rgba(38,37,31,.28);
+ max-width:370px;width:100%;padding:18px 20px;max-height:86vh;overflow:auto;animation:pop .25s ease-out}
+@keyframes pop{from{transform:scale(.9);opacity:0}}
+.card h2{margin:0 0 8px;letter-spacing:.08em}
+.card ul{padding-left:18px;margin:0 0 14px;font-size:13.5px;line-height:1.5}
+.card li{margin-bottom:6px}
+.win{text-align:center}
+.big{font-size:46px;line-height:1}
+.gold{color:#b8860b;font-weight:700}
+#winStats{font-size:14px;line-height:1.6}
+.knot{transition:fill .35s}
+.knot.lvl{fill:#d9a514}
+.ring{opacity:.5}
+.ring.hot{opacity:1;stroke:#e5383b;animation:pu 1.1s infinite}
+.ring.tgt{opacity:1;stroke:#0a8754;stroke-width:3.5}
+@keyframes pu{50%{opacity:.35}}
+.disc{cursor:grab}
+text{pointer-events:none}
+@media(prefers-reduced-motion:reduce){.card{animation:none}.ring.hot{animation:none}.btn:hover{transform:none}}
+</style>
+</head>
+<body>
+<header>
+ <div class="dots" aria-hidden="true"><span style="background:#e5383b"></span><span style="background:#f6b93b"></span><span style="background:#1d6fb8"></span></div>
+ <h1>EQUIPOISE</h1>
+ <p class="tag">Hang all nine weights so every rod of the mobile swings level.</p>
+</header>
+<div id="stage"><div id="frame">
+<svg id="board" viewBox="0 0 420 470" role="img" aria-label="A hanging mobile with five rods, nine hooks, and a tray of nine numbered weights"></svg>
+</div></div>
+<div id="bar">
+ <button id="helpBtn" class="btn ghost">How to play</button>
+ <span id="status">0/9 hung</span>
+ <button id="resetBtn" class="btn ghost">Clear</button>
+ <button id="resBtn" class="btn" hidden>Result</button>
+</div>
+
+<div class="ovl" id="howto" hidden>
+ <div class="card" role="dialog" aria-modal="true" aria-labelledby="ht">
+  <h2 id="ht">How to play</h2>
+  <ul>
+   <li><b>Drag</b> a weight to a hook — or <b>tap</b> the weight, then tap a hook. Tap or drag a hung weight to lift it off.</li>
+   <li>A rod balances when the <b>weight × distance</b> totals match on both sides of its knot. The small italic numbers on each rod are the hook distances.</li>
+   <li>A hanging rod pulls on its hook with the <b>total of everything below it</b>. Rods and strings themselves weigh nothing.</li>
+   <li>Example: a 3 hung at distance 2 balances a 2 hung at distance 3, because 3×2 = 2×3.</li>
+   <li>Rods lean toward their heavy side, and knots turn <span class="gold">gold</span> when level. Hang <b>all nine weights</b> and level <b>all five rods</b> to win — a flawless solve uses 9 placements.</li>
+  </ul>
+  <button id="closeHow" class="btn">Let’s balance</button>
+ </div>
+</div>
+
+<div class="ovl" id="winovl" hidden>
+ <div class="card win" role="dialog" aria-modal="true" aria-labelledby="wt">
+  <div class="big" aria-hidden="true">⚖️</div>
+  <h2 id="wt">Perfectly poised!</h2>
+  <p id="winStats"></p>
+  <button id="shareBtn" class="btn">Copy result</button>
+  <button id="closeWin" class="btn ghost">Admire the mobile</button>
+ </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id);};
+var svg=$('board'), NS='http://www.w3.org/2000/svg';
+function E(t,a,p){var e=document.createElementNS(NS,t);for(var k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+function set(e,a){for(var k in a)e.setAttribute(k,a[k]);}
+var RM=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---- hand-authored puzzle data (see SOLUTION comment in <head>) ---- */
+var U=30,RX=195,RY=64;
+var BEAMS={
+ A:{str:0,  hooks:[{d:-2,sub:'B'},{d:-1,hk:'k'},{d:3,sub:'C'}]},
+ B:{str:62, hooks:[{d:-3,hk:'e'},{d:-2,sub:'D'},{d:4,hk:'f'}]},
+ C:{str:150,hooks:[{d:-2,hk:'g'},{d:-1,sub:'E'},{d:3,hk:'h'}]},
+ D:{str:96, hooks:[{d:-1,hk:'a'},{d:2,hk:'b'}]},
+ E:{str:82, hooks:[{d:-3,hk:'c'},{d:1,hk:'d'}]}
+};
+var HANG={k:20,e:38,f:38,g:38,h:38,a:38,b:38,c:38,d:38};
+var HOOKIDS=['k','e','f','g','h','a','b','c','d'];
+var COLORS={1:'#e5383b',2:'#1d6fb8',3:'#f6b93b',4:'#26251f',5:'#e8590c',6:'#0a8754',7:'#6741d9',8:'#c2255c',9:'#7f5539'};
+function rOf(v){return 11+v;}
+
+/* ---- svg layers ---- */
+var trayL=E('g',{},svg),strL=E('g',{},svg),barL=E('g',{},svg),ringL=E('g',{},svg),discL=E('g',{},svg),fxL=E('g',{},svg);
+
+E('rect',{x:10,y:372,width:400,height:88,rx:14,fill:'#eadfc3',stroke:'#cbb98e','stroke-width':2},trayL);
+var tl=E('text',{x:210,y:389,'text-anchor':'middle','font-size':9,fill:'#a2915f','letter-spacing':'3'},trayL);
+tl.textContent='WEIGHT TRAY';
+for(var v0=1;v0<=9;v0++)E('circle',{cx:42*v0,cy:420,r:12,fill:'none',stroke:'#cbb98e','stroke-dasharray':'3 4'},trayL);
+E('rect',{x:181,y:6,width:28,height:8,rx:3,fill:'#26251f'},strL);
+E('line',{x1:195,y1:14,x2:195,y2:RY,stroke:'#6b6455','stroke-width':2},strL);
+
+var beamEl={},hookEl={},HOOKOBJ={},SUBS=[],n,i;
+for(n in BEAMS){
+ var g=E('g',{},barL);
+ beamEl[n]={bar:E('line',{stroke:'#26251f','stroke-width':7,'stroke-linecap':'round'},g),
+            knot:E('circle',{r:4.6,fill:'#26251f','class':'knot'},g),labels:[]};
+ for(i=0;i<BEAMS[n].hooks.length;i++){
+  var h=BEAMS[n].hooks[i];
+  var t=E('text',{'text-anchor':'middle','font-size':10,fill:'#8b7f60','font-style':'italic'},g);
+  t.textContent=Math.abs(h.d);
+  beamEl[n].labels.push({h:h,el:t});
+  if(h.sub){SUBS.push({h:h,c:h.sub,el:E('line',{stroke:'#6b6455','stroke-width':2},strL)});}
+  else{
+   HOOKOBJ[h.hk]=h;
+   hookEl[h.hk]={str:E('line',{stroke:'#6b6455','stroke-width':2},strL),
+                 stub:E('line',{stroke:'#6b6455','stroke-width':2},strL),
+                 ring:E('circle',{r:5,fill:'none',stroke:'#8b7f60','stroke-width':2,'class':'ring'},ringL)};
+  }
+ }
+}
+
+var WTS=[];
+for(var v=1;v<=9;v++){
+ var dg=E('g',{'class':'disc'},discL),r=rOf(v);
+ E('circle',{r:r,fill:COLORS[v],stroke:'#1b1a16','stroke-width':2},dg);
+ E('circle',{cx:-r*.32,cy:-r*.32,r:r*.28,fill:'#fff',opacity:.28},dg);
+ var tx=E('text',{'text-anchor':'middle',y:6,'font-size':17,'font-weight':800,fill:v===3?'#4a3305':'#fdf8ea'},dg);
+ tx.textContent=v;
+ var halo=E('circle',{r:r+5,fill:'none',stroke:'#e5383b','stroke-width':2.5,'stroke-dasharray':'5 5',opacity:0},dg);
+ WTS.push({v:v,r:r,at:null,el:dg,halo:halo,rx:42*v,ry:420});
+}
+
+/* ---- state ---- */
+var occ={},cur={},tgt={},moves=0,solved=false,sel=null,drag=null,tapStart=null;
+for(i=0;i<HOOKIDS.length;i++)occ[HOOKIDS[i]]=null;
+for(n in BEAMS){cur[n]=0;tgt[n]=0;}
+
+function subW(nm){var s=0,hs=BEAMS[nm].hooks;for(var j=0;j<hs.length;j++){var h=hs[j];s+=h.sub?subW(h.sub):(occ[h.hk]?occ[h.hk].v:0);}return s;}
+function torque(nm){var t=0,hs=BEAMS[nm].hooks;for(var j=0;j<hs.length;j++){var h=hs[j];t+=h.d*(h.sub?subW(h.sub):(occ[h.hk]?occ[h.hk].v:0));}return t;}
+
+function walk(nm,fx,fy){
+ var th=cur[nm],B=BEAMS[nm],mn=99,mx=-99,co=Math.cos(th),si=Math.sin(th);
+ B._fx=fx;B._fy=fy;
+ for(var j=0;j<B.hooks.length;j++){var h=B.hooks[j];
+  if(h.d<mn)mn=h.d;if(h.d>mx)mx=h.d;
+  h._x=fx+h.d*U*co;h._y=fy+h.d*U*si;
+  if(h.sub)walk(h.sub,h._x,h._y+BEAMS[h.sub].str);
+ }
+ B._x1=fx+(mn-.4)*U*co;B._y1=fy+(mn-.4)*U*si;
+ B._x2=fx+(mx+.4)*U*co;B._y2=fy+(mx+.4)*U*si;
+}
+
+function render(){
+ walk('A',RX,RY);
+ var j,h;
+ for(j=0;j<SUBS.length;j++){var s=SUBS[j];set(s.el,{x1:s.h._x,y1:s.h._y,x2:s.h._x,y2:s.h._y+BEAMS[s.c].str});}
+ for(var nm in BEAMS){var b=BEAMS[nm],e=beamEl[nm];
+  set(e.bar,{x1:b._x1,y1:b._y1,x2:b._x2,y2:b._y2});
+  set(e.knot,{cx:b._fx,cy:b._fy});
+  e.knot.setAttribute('class','knot'+(torque(nm)===0?' lvl':''));
+  for(j=0;j<e.labels.length;j++)set(e.labels[j].el,{x:e.labels[j].h._x,y:e.labels[j].h._y-8});
+ }
+ for(j=0;j<HOOKIDS.length;j++){var id=HOOKIDS[j],he=hookEl[id];h=HOOKOBJ[id];
+  var w=occ[id];
+  if(w){
+   set(he.str,{x1:h._x,y1:h._y,x2:h._x,y2:h._y+HANG[id],visibility:'visible'});
+   he.stub.setAttribute('visibility','hidden');he.ring.setAttribute('visibility','hidden');
+   w.rx=h._x;w.ry=h._y+HANG[id]+w.r;
+  }else{
+   he.str.setAttribute('visibility','hidden');
+   set(he.stub,{x1:h._x,y1:h._y,x2:h._x,y2:h._y+8,visibility:'visible'});
+   set(he.ring,{cx:h._x,cy:h._y+14,visibility:'visible'});
+   he.ring.setAttribute('class','ring'+((sel||(drag&&drag.moved))?' hot':'')+((drag&&drag.near===id)?' tgt':''));
+  }
+ }
+ for(j=0;j<WTS.length;j++){var ww=WTS[j];
+  if(drag&&drag.w===ww){ww.rx=drag.x;ww.ry=drag.y-14;}
+  else if(!ww.at){ww.rx=42*ww.v;ww.ry=420;}
+  ww.el.setAttribute('transform','translate('+ww.rx+','+ww.ry+')'+((drag&&drag.w===ww)?' scale(1.08)':''));
+  ww.halo.setAttribute('opacity',sel===ww?1:0);
+ }
+}
+
+var raf=null;
+function tick(){
+ var done=true;
+ for(var nm in cur){var d=tgt[nm]-cur[nm];
+  if(Math.abs(d)>.0006){cur[nm]+=d*.16;done=false;}else cur[nm]=tgt[nm];}
+ render();
+ raf=done?null:requestAnimationFrame(tick);
+}
+function kick(){if(raf==null)raf=requestAnimationFrame(tick);}
+function retarget(){
+ for(var nm in BEAMS){var t=torque(nm);
+  tgt[nm]=t===0?0:(t>0?1:-1)*Math.min(.1,.03+Math.abs(t)*.005);}
+ if(RM){for(var m in cur)cur[m]=tgt[m];render();}else kick();
+}
+
+function ping(x,y,color){
+ if(RM)return;
+ var c=E('circle',{cx:x,cy:y,r:8,fill:'none',stroke:color,'stroke-width':3},fxL);
+ var t0=performance.now();
+ (function f(t){var p=(t-t0)/350;
+  if(p>=1){if(c.parentNode)c.parentNode.removeChild(c);return;}
+  c.setAttribute('r',8+p*26);c.setAttribute('opacity',1-p);
+  requestAnimationFrame(f);})(t0);
+}
+
+function levelCount(){var c=0;for(var nm in BEAMS)if(torque(nm)===0)c++;return c;}
+function hungCount(){var c=0;for(var j=0;j<WTS.length;j++)if(WTS[j].at)c++;return c;}
+function updateStatus(){
+ $('status').textContent=hungCount()+'/9 hung · '+levelCount()+'/5 level'+(moves?' · '+moves+' moves':'');
+}
+
+function checkWin(){
+ if(!solved&&hungCount()===9&&levelCount()===5){
+  solved=true;
+  try{var b=localStorage.getItem('eq_best');if(!b||moves<+b)localStorage.setItem('eq_best',String(moves));}catch(err){}
+  $('resBtn').hidden=false;
+  setTimeout(showWin,700);
+ }
+}
+function showWin(){
+ var best='';
+ try{var b=localStorage.getItem('eq_best');if(b)best='<br>Personal best: <b>'+b+'</b>';}catch(err){}
+ $('winStats').innerHTML='All five rods level.<br>Placements: <b>'+moves+'</b> · par <b>9</b>'+(moves===9?' · <span class="gold">flawless!</span>':'')+best;
+ $('winovl').hidden=false;
+}
+
+function placeW(w,hid){
+ if(w.at===hid){sel=null;render();return;}
+ var prev=occ[hid];
+ if(prev){prev.at=null;occ[hid]=null;}
+ if(w.at)occ[w.at]=null;
+ occ[hid]=w;w.at=hid;moves++;sel=null;
+ retarget();updateStatus();
+ var h=HOOKOBJ[hid];
+ ping(h._x,h._y+HANG[hid]+w.r,COLORS[w.v]);
+ render();checkWin();
+}
+function toTray(w){
+ if(w.at){occ[w.at]=null;w.at=null;}
+ sel=null;retarget();updateStatus();render();
+}
+
+function evPt(ev){var r=svg.getBoundingClientRect();
+ return{x:(ev.clientX-r.left)*420/r.width,y:(ev.clientY-r.top)*470/r.height};}
+function pickWeight(p){var best=null,bd=1e9;
+ for(var j=0;j<WTS.length;j++){var w=WTS[j];
+  var d=Math.hypot(p.x-w.rx,p.y-w.ry);
+  if(d<w.r+10&&d<bd){bd=d;best=w;}}
+ return best;}
+function nearHook(x,y,th){var best=null,bd=1e9;
+ for(var j=0;j<HOOKIDS.length;j++){var h=HOOKOBJ[HOOKIDS[j]];
+  var d=Math.hypot(x-h._x,y-(h._y+22));
+  if(d<th&&d<bd){bd=d;best=HOOKIDS[j];}}
+ return best;}
+
+svg.addEventListener('pointerdown',function(ev){
+ ev.preventDefault();
+ var p=evPt(ev),w=pickWeight(p);
+ if(w){
+  drag={w:w,from:w.at,x:p.x,y:p.y,sx:p.x,sy:p.y,moved:false,near:null};
+  if(w.at){occ[w.at]=null;w.at=null;retarget();}
+  discL.appendChild(w.el);
+  try{svg.setPointerCapture(ev.pointerId);}catch(err){}
+  render();
+ }else tapStart=p;
+});
+svg.addEventListener('pointermove',function(ev){
+ if(!drag)return;
+ var p=evPt(ev);
+ drag.x=p.x;drag.y=p.y;
+ if(Math.hypot(p.x-drag.sx,p.y-drag.sy)>7)drag.moved=true;
+ drag.near=drag.moved?nearHook(p.x,p.y,52):null;
+ render();
+});
+function finish(ev){
+ var p=evPt(ev);
+ if(drag){
+  var d=drag;drag=null;
+  if(!d.moved){
+   if(d.from){occ[d.from]=d.w;d.w.at=d.from;}
+   sel=(sel===d.w)?null:d.w;
+   retarget();updateStatus();render();
+  }else{
+   var hid=nearHook(p.x,p.y,52);
+   if(hid)placeW(d.w,hid);
+   else if(p.y>366){sel=null;retarget();updateStatus();render();}
+   else{if(d.from){occ[d.from]=d.w;d.w.at=d.from;}retarget();updateStatus();render();}
+  }
+ }else if(tapStart){
+  var t=tapStart;tapStart=null;
+  if(Math.hypot(p.x-t.x,p.y-t.y)<12&&sel){
+   var hid2=nearHook(p.x,p.y,48);
+   if(hid2)placeW(sel,hid2);
+   else if(p.y>366)toTray(sel);
+   else{sel=null;render();}
+  }
+ }
+}
+svg.addEventListener('pointerup',finish);
+svg.addEventListener('pointercancel',function(ev){
+ if(drag){var d=drag;drag=null;
+  if(d.from&&!d.w.at){occ[d.from]=d.w;d.w.at=d.from;}
+  retarget();render();}
+});
+
+/* ---- buttons & modals ---- */
+$('helpBtn').addEventListener('click',function(){$('howto').hidden=false;});
+$('closeHow').addEventListener('click',function(){$('howto').hidden=true;});
+$('closeWin').addEventListener('click',function(){$('winovl').hidden=true;});
+$('resBtn').addEventListener('click',showWin);
+$('howto').addEventListener('click',function(e){if(e.target===this)this.hidden=true;});
+$('winovl').addEventListener('click',function(e){if(e.target===this)this.hidden=true;});
+$('resetBtn').addEventListener('click',function(){
+ for(var j=0;j<WTS.length;j++)WTS[j].at=null;
+ for(j=0;j<HOOKIDS.length;j++)occ[HOOKIDS[j]]=null;
+ moves=0;solved=false;sel=null;drag=null;
+ $('resBtn').hidden=true;
+ retarget();updateStatus();render();
+});
+function copyText(txt){
+ return new Promise(function(res){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+   navigator.clipboard.writeText(txt).then(function(){res(true);},function(){res(fallback());});
+  }else res(fallback());
+  function fallback(){
+   try{var ta=document.createElement('textarea');ta.value=txt;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);
+    ta.select();var ok=document.execCommand('copy');document.body.removeChild(ta);return ok;
+   }catch(err){return false;}
+  }
+ });
+}
+$('shareBtn').addEventListener('click',function(){
+ var txt='⚖️ Equipoise #1\nAll five rods level — '+moves+' placements (par 9)'+(moves===9?' · flawless!':'');
+ var btn=$('shareBtn');
+ copyText(txt).then(function(ok){
+  btn.textContent=ok?'Copied!':'Copy failed';
+  setTimeout(function(){btn.textContent='Copy result';},1500);
+ });
+});
+
+/* ---- init ---- */
+retarget();updateStatus();render();
+var seen=false;
+try{seen=!!localStorage.getItem('eq_seen');if(!seen)localStorage.setItem('eq_seen','1');}catch(err){}
+if(!seen)$('howto').hidden=false;
+})();
+</script>
+</body>
+</html>
