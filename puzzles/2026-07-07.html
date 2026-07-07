@@ -268,7 +268,11 @@ function toTray(w){
  sel=null;retarget();updateStatus();render();
 }
 
-function evPt(ev){var r=svg.getBoundingClientRect();
+function evPt(ev){
+ var m=svg.getScreenCTM&&svg.getScreenCTM();
+ if(m){var pt=svg.createSVGPoint();pt.x=ev.clientX;pt.y=ev.clientY;
+  var q=pt.matrixTransform(m.inverse());return{x:q.x,y:q.y};}
+ var r=svg.getBoundingClientRect();
  return{x:(ev.clientX-r.left)*420/r.width,y:(ev.clientY-r.top)*470/r.height};}
 function pickWeight(p){var best=null,bd=1e9;
  for(var j=0;j<WTS.length;j++){var w=WTS[j];
